@@ -1,0 +1,66 @@
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    Options -Indexes
+
+    RewriteEngine On
+
+    # BẢO VỆ FILE NHẠY CẢM (.env, .git, composer…)
+    <FilesMatch "^\.env|\.git|composer\.(json|lock)|package\.(json|lock)|artisan$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+
+    # CHẶN TRUY CẬP THƯ MỤC STORAGE & LOGS
+    RewriteRule ^storage/.*$ - [F,L]
+    RewriteRule ^bootstrap/.*$ - [F,L]
+
+    # CHẶN FILE PHP TRONG /storage, /uploads, /images
+    <DirectoryMatch "(storage|uploads|images|files)">
+        <Files "*.php">
+            deny from all
+        </Files>
+    </DirectoryMatch>
+
+    # HANDLE AUTHORIZATION HEADERS
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Handle X-XSRF-Token Header
+    RewriteCond %{HTTP:x-xsrf-token} .
+    RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
+
+    # REDIRECT SLASH CUỐI URL
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # CHẶN BOT ĐỘC HẠI / SCAN TOOL
+    SetEnvIfNoCase User-Agent "curl" bad_bot
+    SetEnvIfNoCase User-Agent "HTTrack" bad_bot
+    SetEnvIfNoCase User-Agent "python" bad_bot
+    SetEnvIfNoCase User-Agent "libwww-perl" bad_bot
+    SetEnvIfNoCase User-Agent "crawler" bad_bot
+
+    Order Allow,Deny
+    Allow from all
+    Deny from env=bad_bot
+
+    # CHẶN TRUY CẬP DIRECT .PHP
+    #     CHỈ CHO PHÉP index.php
+    RewriteCond %{REQUEST_URI} !^/index\.php
+    RewriteCond %{REQUEST_FILENAME} \.php$
+    RewriteRule ^ - [F,L]
+
+    # ROUTE TỚI Laravel (FRONT CONTROLLER)
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# TẮT HIỂN THỊ LỖI PHP TRÊN MÀN HÌNH
+php_flag display_errors Off
+php_flag display_startup_errors Off
+php_value error_reporting 0
